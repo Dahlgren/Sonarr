@@ -7,7 +7,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using NLog;
-using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Common.Model;
 
 namespace NzbDrone.Common.Processes
@@ -27,11 +26,12 @@ namespace NzbDrone.Common.Processes
         bool Exists(string processName);
         ProcessPriorityClass GetCurrentProcessPriority();
         Process Start(string path, string args = null, StringDictionary environmentVariables = null, Action<string> onOutputDataReceived = null, Action<string> onErrorDataReceived = null);
+		void RestartProcess(string path, string args = null, StringDictionary environmentVariables = null);
         Process SpawnNewProcess(string path, string args = null, StringDictionary environmentVariables = null);
         ProcessOutput StartAndCapture(string path, string args = null, StringDictionary environmentVariables = null);
     }
 
-    public class ProcessProvider : IProcessProvider
+    public abstract class ProcessProvider : IProcessProvider
     {
         private readonly Logger _logger;
 
@@ -106,14 +106,8 @@ namespace NzbDrone.Common.Processes
             process.Start();
         }
 
-        public Process Start(string path, string args = null, StringDictionary environmentVariables = null, Action<string> onOutputDataReceived = null, Action<string> onErrorDataReceived = null)
+        public virtual Process Start(string path, string args = null, StringDictionary environmentVariables = null, Action<string> onOutputDataReceived = null, Action<string> onErrorDataReceived = null)
         {
-            if (OsInfo.IsMonoRuntime && path.EndsWith(".exe", StringComparison.InvariantCultureIgnoreCase))
-            {
-                args = GetMonoArgs(path, args);
-                path = "mono";
-            }
-
             var logger = LogManager.GetLogger(new FileInfo(path).Name);
 
             var startInfo = new ProcessStartInfo(path, args)
@@ -172,14 +166,13 @@ namespace NzbDrone.Common.Processes
             return process;
         }
 
-        public Process SpawnNewProcess(string path, string args = null, StringDictionary environmentVariables = null)
-        {
-            if (OsInfo.IsMonoRuntime && path.EndsWith(".exe", StringComparison.InvariantCultureIgnoreCase))
-            {
-                args = GetMonoArgs(path, args);
-                path = "mono";
-            }
+		public virtual void RestartProcess(string path, string args = null, StringDictionary environmentVariables = null)
+		{
+			SpawnNewProcess(path, args, environmentVariables);
+		}
 
+        public virtual Process SpawnNewProcess(string path, string args = null, StringDictionary environmentVariables = null)
+        {
             _logger.Debug("Starting {0} {1}", path, args);
 
             var startInfo = new ProcessStartInfo(path, args);
@@ -338,11 +331,6 @@ namespace NzbDrone.Common.Processes
             }
 
             return processes;
-        }
-
-        private string GetMonoArgs(string path, string args)
-        {
-            return string.Format("--debug {0} {1}", path, args);
         }
     }
 }

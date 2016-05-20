@@ -39,7 +39,7 @@ namespace NzbDrone.Host
                 var restartArgs = GetRestartArgs();
 
                 _logger.Info("Attempting restart with arguments: {0}", restartArgs);
-                _processProvider.SpawnNewProcess(_runtimeInfo.ExecutingApplication, restartArgs);
+				_processProvider.RestartProcess(_runtimeInfo.ExecutingApplication, restartArgs);
             }
         }
 
